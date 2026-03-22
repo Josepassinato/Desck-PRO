@@ -19,6 +19,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: path.resolve(__dirname, "./src/test/setup.ts"),
     root: __dirname,
+    exclude: ["e2e/**", "node_modules/**"],
     css: true,
   },
 });
