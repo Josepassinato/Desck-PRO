@@ -1,129 +1,82 @@
-
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { useState } from "react";
+import { useAuth } from "@/contexts/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { useAuth } from '@/contexts/auth';
-import { useNavigate } from 'react-router-dom';
-import { cleanupAuthState } from '@/contexts/auth/cleanupUtils';
-import { toast } from '@/hooks/use-toast';
-
-const formSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
 
 export function LoginForm() {
-  const { enhancedLogin } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  const onSubmit = async (data: FormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
     try {
-      setLoading(true);
-      
-      // Limpar qualquer estado de autenticação anterior para evitar conflitos
-      cleanupAuthState();
-      
-      const result = await enhancedLogin(data.email, data.password);
-      
-      if (result?.success) {
-        console.log('Login successful, navigating to dashboard');
-        // Navegação será tratada pelo enhancedLogin
-      } else {
-        toast({
-          title: 'Falha no login',
-          description: result?.error || 'Credenciais inválidas',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error in login form:', error);
-      toast({
-        title: 'Erro no sistema',
-        description: 'Não foi possível processar sua solicitação',
-        variant: 'destructive',
-      });
+      await signIn(email, password);
+      toast.success("Login realizado com sucesso");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao fazer login";
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm font-medium">Email</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="seu@email.com"
-                  type="email"
-                  {...field}
-                  autoComplete="email"
-                  disabled={loading}
-                  className="h-12 text-base transition-smooth focus:shadow-glow"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm font-medium">Senha</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="******"
-                  type="password"
-                  {...field}
-                  autoComplete="current-password"
-                  disabled={loading}
-                  className="h-12 text-base transition-smooth focus:shadow-glow"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full h-12 font-medium mt-6 bg-gradient-primary hover:shadow-glow transition-smooth" disabled={loading}>
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Entrando...
-            </>
-          ) : (
-            'Entrar'
-          )}
-        </Button>
-      </form>
-    </Form>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">
+            D
+          </div>
+          <CardTitle className="text-2xl">DesckPRO</CardTitle>
+          <CardDescription>
+            Diagnostico de migracao fiscal e gestao operacional
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Entrando..." : "Entrar"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

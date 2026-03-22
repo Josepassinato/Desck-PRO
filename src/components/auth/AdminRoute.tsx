@@ -1,31 +1,46 @@
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/auth";
 
-import React, { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth';
+/**
+ * Protege rotas que exigem role "admin".
+ * Redireciona para / se não for admin.
+ */
+export function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAdmin, isLoading } = useAuth();
 
-interface AdminRouteProps {
-  component: React.ComponentType;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
 }
 
-export const AdminRoute: React.FC<AdminRouteProps> = ({ component: Component }) => {
-  const { isAuthenticated, isAdmin, isLoading } = useAuth();
-  
-  console.log("AdminRoute - Estado de autenticação:", { 
-    isAuthenticated, 
-    isAdmin, 
-    isLoading 
-  });
-  
+/**
+ * Protege rotas que exigem role "accountant" ou "admin".
+ * Redireciona clientes para /portal.
+ */
+export function StaffRoute({ children }: { children: React.ReactNode }) {
+  const { isAccountant, isLoading } = useAuth();
+
   if (isLoading) {
-    console.log("AdminRoute - Carregando autenticação...");
-    return null; // Or a loading spinner
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
-  
-  if (!isAuthenticated || !isAdmin) {
-    console.log("AdminRoute - Acesso negado, redirecionando para login");
-    return <Navigate to="/login" replace />;
+
+  if (!isAccountant) {
+    return <Navigate to="/portal" replace />;
   }
-  
-  console.log("AdminRoute - Acesso permitido, renderizando componente");
-  return <Component />;
-};
+
+  return <>{children}</>;
+}

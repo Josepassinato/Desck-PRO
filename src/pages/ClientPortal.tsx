@@ -1,180 +1,294 @@
-
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ClientHeader } from "@/components/client-portal/ClientHeader";
-import { ClientPortalTabs } from "@/components/client-portal/ClientPortalTabs";
+import {
+  FileText,
+  ClipboardList,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Download,
+  Building2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { LogOut, ArrowLeft } from "lucide-react";
-import { VoiceAssistant } from "@/components/dashboard/VoiceAssistant";
-import { VoiceAssistantButton } from "@/components/layout/VoiceAssistantButton";
-import { ClientDocumentUpload } from "@/components/client-portal/ClientDocumentUpload";
-import { ExternalIntegrations } from "@/components/client-portal/ExternalIntegrations";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/contexts/auth";
+import { supabase } from "@/lib/supabase";
+import { documentoService } from "@/services/documentoService";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { Documento } from "@/types/documento";
+import type { Pendencia } from "@/types/pendencia";
+import {
+  TIPO_PENDENCIA_LABELS,
+  PRIORIDADE_LABELS,
+  PRIORIDADE_COLORS,
+  STATUS_LABELS,
+  STATUS_COLORS,
+} from "@/types/pendencia";
 
-const ClientPortal = () => {
-  const { clientId } = useParams<{ clientId: string }>();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [clientName, setClientName] = useState<string>("");
-  const [clientCNPJ, setClientCNPJ] = useState<string>("");
-  const [loading, setIsLoading] = useState<boolean>(true);
-  const [isAssistantActive, setIsAssistantActive] = useState<boolean>(false);
+export function ClientPortal() {
+  const { profile } = useAuth();
 
-  useEffect(() => {
-    const checkClientAccess = () => {
-      // Verificar se existe sessão de cliente
-      const storedClientId = sessionStorage.getItem('client_id');
-      const storedClientName = sessionStorage.getItem('client_name');
-      const storedClientCNPJ = sessionStorage.getItem('client_cnpj');
-      const clientAuthenticated = sessionStorage.getItem('client_authenticated') === 'true';
-      
-      if (!clientAuthenticated || !storedClientId) {
-        // Cliente não autenticado, redirecionar para página de acesso
-        toast({
-          title: "Acesso não autorizado",
-          description: "Faça login para acessar o portal do cliente",
-          variant: "destructive",
-        });
-        navigate('/client-access');
-        return;
-      }
-      
-      // Se temos ID específico na URL, verificar se corresponde ao cliente autenticado
-      if (clientId && clientId !== storedClientId && clientId !== 'test-client-123') {
-        // ID da URL não corresponde ao cliente autenticado
-        if (storedClientId === 'test-client-123') {
-          // Para cliente de teste, permitimos acesso a qualquer ID para demonstração
-          toast({
-            title: "Modo de demonstração",
-            description: "Acesso permitido em modo de teste",
-          });
-        } else {
-          toast({
-            title: "Cliente incorreto",
-            description: "Você não tem permissão para acessar este cliente",
-            variant: "destructive",
-          });
-          navigate(`/client-portal/${storedClientId}`);
-          return;
-        }
-      }
-      
-      // Configurar dados do cliente
-      setClientName(storedClientName || "Cliente");
-      setClientCNPJ(storedClientCNPJ || "");
-      setIsLoading(false);
-    };
-    
-    checkClientAccess();
-  }, [clientId, navigate, toast]);
+  const firmId = profile?.accounting_firm_id;
 
-  const handleBack = () => {
-    navigate(-1);
+  // Client sees only empresas from their firm
+  const { data: empresas = [] } = useQuery({
+    queryKey: ["client-empresas", firmId],
+    queryFn: async () => {
+      if (!firmId) return [];
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("id, razao_social, cnpj, regime_atual, status")
+        .eq("accounting_firm_id", firmId)
+        .order("razao_social");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!firmId,
+  });
+
+  const empresaIds = empresas.map((e) => e.id);
+
+  const { data: pendencias = [] } = useQuery({
+    queryKey: ["client-pendencias", firmId],
+    queryFn: async () => {
+      if (!firmId || empresaIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("pendencias")
+        .select("*")
+        .eq("accounting_firm_id", firmId)
+        .in("status", ["aberta", "em_andamento"])
+        .order("prioridade")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Pendencia[];
+    },
+    enabled: !!firmId && empresaIds.length > 0,
+  });
+
+  const { data: documentos = [] } = useQuery({
+    queryKey: ["client-documentos", firmId],
+    queryFn: async () => {
+      if (!firmId || empresaIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("documentos")
+        .select("*")
+        .in("empresa_id", empresaIds)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as Documento[];
+    },
+    enabled: !!firmId && empresaIds.length > 0,
+  });
+
+  const handleDownload = async (filePath: string) => {
+    try {
+      const url = await documentoService.getDownloadUrl(filePath);
+      window.open(url, "_blank");
+    } catch {
+      toast.error("Erro ao baixar documento");
+    }
   };
-  
-  const handleLogout = () => {
-    // Limpar dados da sessão do cliente
-    sessionStorage.removeItem('client_id');
-    sessionStorage.removeItem('client_name');
-    sessionStorage.removeItem('client_cnpj');
-    sessionStorage.removeItem('client_access_token');
-    sessionStorage.removeItem('client_authenticated');
-    
-    toast({
-      title: "Sessão encerrada",
-      description: "Você saiu do portal do cliente",
-    });
-    
-    // Redirecionar para a página de acesso
-    navigate('/client-access');
-  };
 
-  const toggleAssistant = () => {
-    setIsAssistantActive(!isAssistantActive);
-  };
-  
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="container flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Carregando dados do cliente...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-  
-  // Cliente info para o assistente de voz com acesso restrito aos dados deste cliente
-  const clientInfo = {
-    id: clientId || sessionStorage.getItem('client_id') || '',
-    name: clientName,
-    cnpj: clientCNPJ,
-  };
-  
-  return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleBack}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
-              </Button>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                className="flex items-center gap-2"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                Sair
-              </Button>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">Portal do Cliente</h1>
-            <p className="text-muted-foreground">
-              Acesse suas informações e documentos em um só lugar
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <VoiceAssistantButton 
-              isActive={isAssistantActive}
-              onClick={toggleAssistant}
-              className="md:flex hidden"
-            />
-          </div>
-        </div>
-
-        {/* Add new document upload component */}
-        <div className="mb-6">
-          <ClientDocumentUpload clientId={clientId || ''} />
-        </div>
-
-        {/* Main content tabs */}
-        <ClientPortalTabs toggleAssistant={toggleAssistant} />
-        
-        {/* External integrations section */}
-        <div className="mt-8">
-          <ExternalIntegrations clientId={clientId || ''} />
-        </div>
-
-        {/* Voice assistant (now managed by DashboardLayout) */}
-        <VoiceAssistant 
-          isActive={isAssistantActive}
-          onToggle={toggleAssistant}
-          clientInfo={clientInfo}
-        />
-      </div>
-    </DashboardLayout>
+  const pendenciasUrgentes = pendencias.filter(
+    (p) => p.prioridade === "urgente" || p.prioridade === "alta"
   );
-};
 
-export default ClientPortal;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Bem-vindo, {profile?.full_name?.split(" ")[0] ?? "Cliente"}
+        </h1>
+        <p className="text-muted-foreground">
+          Portal do Cliente — acompanhe documentos e pendencias
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+                <Building2 className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{empresas.length}</p>
+                <p className="text-xs text-muted-foreground">Empresa(s)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-100">
+                <ClipboardList className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{pendencias.length}</p>
+                <p className="text-xs text-muted-foreground">
+                  Pendencia(s) abertas
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+                <FileText className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{documentos.length}</p>
+                <p className="text-xs text-muted-foreground">Documentos</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {pendenciasUrgentes.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <CardTitle className="text-base text-orange-800">
+                Atencao — Pendencias Urgentes
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {pendenciasUrgentes.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 text-sm">
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      PRIORIDADE_COLORS[p.prioridade]
+                    }`}
+                  >
+                    {PRIORIDADE_LABELS[p.prioridade]}
+                  </span>
+                  <span className="font-medium">{p.titulo}</span>
+                  {p.data_limite && (
+                    <span className="text-xs text-muted-foreground">
+                      Prazo:{" "}
+                      {new Date(p.data_limite).toLocaleDateString("pt-BR")}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pendencias</CardTitle>
+          <CardDescription>
+            Itens que precisam da sua atencao
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pendencias.length === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircle className="mx-auto h-10 w-10 text-green-500/50" />
+              <p className="text-sm text-muted-foreground mt-2">
+                Nenhuma pendencia em aberto
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {pendencias.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 p-3 border rounded-lg"
+                >
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{p.titulo}</p>
+                    {p.descricao && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {p.descricao}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        {TIPO_PENDENCIA_LABELS[p.tipo]}
+                      </span>
+                      <span
+                        className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          STATUS_COLORS[p.status]
+                        }`}
+                      >
+                        {STATUS_LABELS[p.status]}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
+                      PRIORIDADE_COLORS[p.prioridade]
+                    }`}
+                  >
+                    {PRIORIDADE_LABELS[p.prioridade]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Documentos Recentes</CardTitle>
+          <CardDescription>
+            Ultimos documentos processados
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {documentos.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground mt-2">
+                Nenhum documento
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {documentos.map((d) => (
+                <div
+                  key={d.id}
+                  className="flex items-center gap-3 p-2 rounded hover:bg-muted/30"
+                >
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{d.nome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {d.tipo.replace(/_/g, " ")} — {d.competencia ?? "sem competencia"}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleDownload(d.file_path)}
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

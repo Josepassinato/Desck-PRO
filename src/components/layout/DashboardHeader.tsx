@@ -1,65 +1,83 @@
-
-import React from "react";
-import { Bell, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { VoiceAssistantButton } from "./VoiceAssistantButton";
-import { ClientSelector } from "./ClientSelector";
+import { LogOut, Menu, User } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { toast } from "sonner";
 
-interface DashboardHeaderProps {
-  isVoiceActive?: boolean;
-  toggleVoiceAssistant?: () => void;
+interface HeaderProps {
+  onToggleSidebar?: () => void;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({
-  isVoiceActive,
-  toggleVoiceAssistant,
-}) => {
-  const { isAuthenticated, navigateToLogin } = useAuth();
+export function DashboardHeader({ onToggleSidebar }: HeaderProps) {
+  const { profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Sessao encerrada");
+    } catch {
+      toast.error("Erro ao encerrar sessao");
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b glass px-4">
-      <div className="flex md:hidden">
-        <Button variant="ghost" size="icon" className="md:hidden transition-smooth hover:bg-primary/10">
-          <Menu className="h-5 w-5" />
-          <span className="sr-only">Toggle Menu</span>
-        </Button>
-      </div>
-      
-      <div className="flex-1">
-        {isAuthenticated ? (
-          <ClientSelector />
-        ) : (
-          <div className="text-lg font-semibold bg-gradient-primary bg-clip-text text-transparent">
-            ContaFlix
-          </div>
-        )}
-      </div>
-      
-      <div className="flex items-center gap-2">
-        {isAuthenticated ? (
-          <>
-            <Button variant="ghost" size="icon" className="relative transition-smooth hover:bg-primary/10 hover:shadow-glow">
-              <Bell className="h-5 w-5" />
-              <div className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full animate-pulse"></div>
-              <span className="sr-only">Notifications</span>
-            </Button>
-            
-            {toggleVoiceAssistant && (
-              <VoiceAssistantButton 
-                isActive={isVoiceActive || false} 
-                onClick={toggleVoiceAssistant} 
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden"
+        onClick={onToggleSidebar}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+
+      <div className="flex-1" />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Avatar className="h-8 w-8">
+              <AvatarImage
+                src={profile?.avatar_url ?? undefined}
+                alt={profile?.full_name}
               />
-            )}
-          </>
-        ) : (
-          <Button onClick={() => navigateToLogin()} className="bg-gradient-primary hover:shadow-glow transition-smooth">
-            Fazer Login
+              <AvatarFallback>
+                {profile?.full_name?.charAt(0)?.toUpperCase() ?? "U"}
+              </AvatarFallback>
+            </Avatar>
           </Button>
-        )}
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium">{profile?.full_name}</p>
+              <p className="text-xs text-muted-foreground">{profile?.email}</p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>
+            <User className="mr-2 h-4 w-4" />
+            Perfil
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sair
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
-};
-
-export default DashboardHeader;
+}
