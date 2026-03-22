@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/auth";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { AdminRoute, StaffRoute } from "@/components/auth/AdminRoute";
 import { Dashboard } from "@/pages/Dashboard";
 import { Empresas } from "@/pages/Empresas";
 import { Diagnostico } from "@/pages/Diagnostico";
@@ -85,16 +86,16 @@ export default function App() {
           }
         />
         <Route path="portal" element={<ClientPortal />} />
-        <Route path="empresas" element={<Empresas />} />
-        <Route path="diagnostico" element={<Diagnostico />} />
-        <Route path="documentos" element={<Documentos />} />
-        <Route path="integracoes" element={<Integracoes />} />
-        <Route path="bancario" element={<Bancario />} />
-        <Route path="contaflux" element={<ContaFlux />} />
-        <Route path="pendencias" element={<Pendencias />} />
-        <Route path="relatorios" element={<Relatorios />} />
-        <Route path="admin/usuarios" element={<AdminUsuarios />} />
-        <Route path="admin/configuracoes" element={<AdminConfiguracoes />} />
+        <Route path="empresas" element={<StaffRoute><Empresas /></StaffRoute>} />
+        <Route path="diagnostico" element={<StaffRoute><Diagnostico /></StaffRoute>} />
+        <Route path="documentos" element={<StaffRoute><Documentos /></StaffRoute>} />
+        <Route path="integracoes" element={<StaffRoute><Integracoes /></StaffRoute>} />
+        <Route path="bancario" element={<StaffRoute><Bancario /></StaffRoute>} />
+        <Route path="contaflux" element={<StaffRoute><ContaFlux /></StaffRoute>} />
+        <Route path="pendencias" element={<StaffRoute><Pendencias /></StaffRoute>} />
+        <Route path="relatorios" element={<StaffRoute><Relatorios /></StaffRoute>} />
+        <Route path="admin/usuarios" element={<AdminRoute><AdminUsuarios /></AdminRoute>} />
+        <Route path="admin/configuracoes" element={<AdminRoute><AdminConfiguracoes /></AdminRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

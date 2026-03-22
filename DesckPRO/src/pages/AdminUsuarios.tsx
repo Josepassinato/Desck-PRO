@@ -235,46 +235,58 @@ function InviteDialog({
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<UserRole>("accountant");
-  const [password, setPassword] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !name || !password) return;
+    if (!email || !name) return;
 
     setIsCreating(true);
     try {
+      // Busca o accounting_firm_id do admin atual
+      const { data: currentProfile } = await supabase
+        .from("user_profiles")
+        .select("accounting_firm_id")
+        .single();
+
+      if (!currentProfile?.accounting_firm_id) {
+        throw new Error("Admin nao vinculado a escritorio");
+      }
+
+      // Usa inviteUserByEmail para enviar magic link (requer service_role em Edge Function)
+      // Fallback: signUp com senha aleatória forte + email de confirmação
+      const tempPassword = crypto.randomUUID() + "!Aa1";
       const { data, error } = await supabase.auth.signUp({
         email,
-        password,
-        options: { data: { full_name: name, role } },
+        password: tempPassword,
+        options: {
+          data: { full_name: name, role },
+          emailRedirectTo: `${window.location.origin}/login`,
+        },
       });
 
       if (error) throw error;
 
       if (data.user) {
-        const { data: profile } = await supabase
-          .from("user_profiles")
-          .select("accounting_firm_id")
-          .single();
-
         await supabase.from("user_profiles").insert({
           id: data.user.id,
           email,
           full_name: name,
           role,
-          accounting_firm_id: profile?.accounting_firm_id,
+          accounting_firm_id: currentProfile.accounting_firm_id,
         });
       }
 
-      toast.success(`Convite enviado para ${email}`);
+      toast.success(
+        `Convite enviado para ${email}. O usuario recebera um email para confirmar e definir sua senha.`
+      );
       setEmail("");
       setName("");
-      setPassword("");
       setRole("accountant");
       onClose();
-    } catch {
-      toast.error("Erro ao criar usuario");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao convidar usuario";
+      toast.error(message);
     } finally {
       setIsCreating(false);
     }
@@ -303,15 +315,9 @@ function InviteDialog({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@exemplo.com"
             />
-          </div>
-          <div>
-            <Label>Senha Temporaria</Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Senha inicial"
-            />
+            <p className="text-xs text-muted-foreground mt-1">
+              O usuario recebera um email para confirmar a conta e definir a senha.
+            </p>
           </div>
           <div>
             <Label>Perfil</Label>
@@ -335,10 +341,10 @@ function InviteDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isCreating || !email || !name || !password}
+              disabled={isCreating || !email || !name}
             >
               <Mail className="mr-2 h-4 w-4" />
-              {isCreating ? "Criando..." : "Criar Usuario"}
+              {isCreating ? "Enviando..." : "Enviar Convite"}
             </Button>
           </DialogFooter>
         </form>

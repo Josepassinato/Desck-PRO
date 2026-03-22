@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { requireFirmId } from "@/lib/auth-guard";
+import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
 import type {
   IntegracaoERP,
   ERPProvider,
@@ -6,6 +8,8 @@ import type {
 
 export const integracaoService = {
   async listByEmpresa(empresaId: string): Promise<IntegracaoERP[]> {
+    await requireFirmId();
+
     const { data, error } = await supabase
       .from("integracoes_erp")
       .select("*")
@@ -22,12 +26,17 @@ export const integracaoService = {
     credentials: Record<string, string>,
     config?: Record<string, unknown>
   ): Promise<IntegracaoERP> {
+    await requireFirmId();
+
+    // Criptografa credenciais antes de salvar
+    const encrypted = await encryptCredentials(credentials);
+
     const { data, error } = await supabase
       .from("integracoes_erp")
       .insert({
         empresa_id: empresaId,
         provider,
-        credentials_encrypted: credentials,
+        credentials_encrypted: encrypted,
         config: config ?? {},
         status: "pending",
       })
@@ -38,11 +47,36 @@ export const integracaoService = {
     return data as IntegracaoERP;
   },
 
+  /**
+   * Descriptografa e retorna as credenciais de uma integração.
+   * Usar apenas quando necessário (ex: testar conexão).
+   */
+  async getCredentials(integracaoId: string): Promise<Record<string, string>> {
+    await requireFirmId();
+
+    const { data, error } = await supabase
+      .from("integracoes_erp")
+      .select("credentials_encrypted")
+      .eq("id", integracaoId)
+      .single();
+
+    if (error) throw error;
+
+    // Se já é um objeto (dados antigos não criptografados), retorna direto
+    if (typeof data.credentials_encrypted === "object") {
+      return data.credentials_encrypted as Record<string, string>;
+    }
+
+    return decryptCredentials(data.credentials_encrypted);
+  },
+
   async updateStatus(
     id: string,
     status: IntegracaoERP["status"],
     error?: string
   ): Promise<IntegracaoERP> {
+    await requireFirmId();
+
     const update: Record<string, unknown> = { status };
     if (status === "active") {
       update.last_sync_at = new Date().toISOString();
@@ -65,6 +99,8 @@ export const integracaoService = {
   },
 
   async remove(id: string): Promise<void> {
+    await requireFirmId();
+
     const { error } = await supabase
       .from("integracoes_erp")
       .delete()

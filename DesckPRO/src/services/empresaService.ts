@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { requireFirmId } from "@/lib/auth-guard";
 import type {
   Empresa,
   CreateEmpresaInput,
@@ -7,9 +8,12 @@ import type {
 
 export const empresaService = {
   async list(): Promise<Empresa[]> {
+    const firmId = await requireFirmId();
+
     const { data, error } = await supabase
       .from("empresas")
       .select("*")
+      .eq("accounting_firm_id", firmId)
       .order("razao_social");
 
     if (error) throw error;
@@ -17,10 +21,13 @@ export const empresaService = {
   },
 
   async getById(id: string): Promise<Empresa> {
+    const firmId = await requireFirmId();
+
     const { data, error } = await supabase
       .from("empresas")
       .select("*")
       .eq("id", id)
+      .eq("accounting_firm_id", firmId)
       .single();
 
     if (error) throw error;
@@ -28,20 +35,13 @@ export const empresaService = {
   },
 
   async create(input: CreateEmpresaInput): Promise<Empresa> {
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("accounting_firm_id")
-      .single();
-
-    if (!profile?.accounting_firm_id) {
-      throw new Error("Usuario nao vinculado a um escritorio");
-    }
+    const firmId = await requireFirmId();
 
     const { data, error } = await supabase
       .from("empresas")
       .insert({
         ...input,
-        accounting_firm_id: profile.accounting_firm_id,
+        accounting_firm_id: firmId,
       })
       .select()
       .single();
@@ -51,10 +51,13 @@ export const empresaService = {
   },
 
   async update(id: string, input: UpdateEmpresaInput): Promise<Empresa> {
+    const firmId = await requireFirmId();
+
     const { data, error } = await supabase
       .from("empresas")
       .update(input)
       .eq("id", id)
+      .eq("accounting_firm_id", firmId)
       .select()
       .single();
 
@@ -63,14 +66,23 @@ export const empresaService = {
   },
 
   async remove(id: string): Promise<void> {
-    const { error } = await supabase.from("empresas").delete().eq("id", id);
+    const firmId = await requireFirmId();
+
+    const { error } = await supabase
+      .from("empresas")
+      .delete()
+      .eq("id", id)
+      .eq("accounting_firm_id", firmId);
     if (error) throw error;
   },
 
   async search(query: string): Promise<Empresa[]> {
+    const firmId = await requireFirmId();
+
     const { data, error } = await supabase
       .from("empresas")
       .select("*")
+      .eq("accounting_firm_id", firmId)
       .or(
         `razao_social.ilike.%${query}%,nome_fantasia.ilike.%${query}%,cnpj.ilike.%${query}%`
       )

@@ -1,8 +1,11 @@
 import { supabase } from "@/lib/supabase";
+import { requireFirmId } from "@/lib/auth-guard";
 import type { Documento, TipoDocumento } from "@/types/documento";
 
 export const documentoService = {
   async listByEmpresa(empresaId: string): Promise<Documento[]> {
+    await requireFirmId();
+
     const { data, error } = await supabase
       .from("documentos")
       .select("*")
@@ -19,6 +22,14 @@ export const documentoService = {
     tipo: TipoDocumento,
     competencia?: string
   ): Promise<Documento> {
+    await requireFirmId();
+
+    // Validação de tamanho (max 50MB)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error("Arquivo excede o limite de 50MB.");
+    }
+
     const filePath = `${empresaId}/${Date.now()}_${file.name}`;
 
     const { error: uploadError } = await supabase.storage
@@ -41,11 +52,18 @@ export const documentoService = {
       .select()
       .single();
 
-    if (error) throw error;
+    // Rollback: se o insert no banco falhar, remove o arquivo do storage
+    if (error) {
+      await supabase.storage.from("documentos").remove([filePath]);
+      throw error;
+    }
+
     return data as Documento;
   },
 
   async remove(id: string): Promise<void> {
+    await requireFirmId();
+
     const { data: doc } = await supabase
       .from("documentos")
       .select("file_path")

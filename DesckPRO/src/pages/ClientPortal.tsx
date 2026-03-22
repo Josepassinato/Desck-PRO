@@ -33,44 +33,57 @@ import {
 export function ClientPortal() {
   const { profile } = useAuth();
 
-  // Client sees empresas linked to them (simplified: show all for the firm)
+  const firmId = profile?.accounting_firm_id;
+
+  // Client sees only empresas from their firm
   const { data: empresas = [] } = useQuery({
-    queryKey: ["client-empresas"],
+    queryKey: ["client-empresas", firmId],
     queryFn: async () => {
+      if (!firmId) return [];
       const { data, error } = await supabase
         .from("empresas")
         .select("id, razao_social, cnpj, regime_atual, status")
+        .eq("accounting_firm_id", firmId)
         .order("razao_social");
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!firmId,
   });
 
+  const empresaIds = empresas.map((e) => e.id);
+
   const { data: pendencias = [] } = useQuery({
-    queryKey: ["client-pendencias"],
+    queryKey: ["client-pendencias", firmId],
     queryFn: async () => {
+      if (!firmId || empresaIds.length === 0) return [];
       const { data, error } = await supabase
         .from("pendencias")
         .select("*")
+        .eq("accounting_firm_id", firmId)
         .in("status", ["aberta", "em_andamento"])
         .order("prioridade")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Pendencia[];
     },
+    enabled: !!firmId && empresaIds.length > 0,
   });
 
   const { data: documentos = [] } = useQuery({
-    queryKey: ["client-documentos"],
+    queryKey: ["client-documentos", firmId],
     queryFn: async () => {
+      if (!firmId || empresaIds.length === 0) return [];
       const { data, error } = await supabase
         .from("documentos")
         .select("*")
+        .in("empresa_id", empresaIds)
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
       return (data ?? []) as Documento[];
     },
+    enabled: !!firmId && empresaIds.length > 0,
   });
 
   const handleDownload = async (filePath: string) => {
