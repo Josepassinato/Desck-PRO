@@ -33,7 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ERP_PROVIDERS } from "@/types/integracao";
-import type { IntegracaoStatus, ERPProvider, ERPProviderInfo } from "@/types/integracao";
+import type { IntegracaoStatus, ERPProviderInfo } from "@/types/integracao";
 import { useEmpresas } from "@/hooks/useEmpresas";
 import { useIntegracoes, useCreateIntegracao, useDeleteIntegracao } from "@/hooks/useIntegracoes";
 import { toast } from "sonner";

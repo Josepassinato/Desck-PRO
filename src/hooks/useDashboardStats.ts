@@ -22,7 +22,7 @@ async function fetchDashboardStats(): Promise<DashboardStats> {
   const empresaIds = empresas?.map((e) => e.id) ?? [];
 
   // Queries em paralelo
-  const [docCount, pendencias, intCount] = await Promise.all([
+  const [docCount, pendencias, intCount, diagCount] = await Promise.all([
     empresaIds.length > 0
       ? supabase
           .from("documentos")
@@ -46,6 +46,14 @@ async function fetchDashboardStats(): Promise<DashboardStats> {
           .eq("status", "active")
           .then((r) => r.count ?? 0)
       : Promise.resolve(0),
+
+    empresaIds.length > 0
+      ? supabase
+          .from("diagnosticos")
+          .select("id", { count: "exact", head: true })
+          .in("empresa_id", empresaIds)
+          .then((r) => r.count ?? 0)
+      : Promise.resolve(0),
   ]);
 
   const pendenciasUrgentes = pendencias.filter(
@@ -53,7 +61,7 @@ async function fetchDashboardStats(): Promise<DashboardStats> {
   ).length;
 
   return {
-    diagnosticos: 0, // Diagnósticos são client-side por enquanto
+    diagnosticos: diagCount,
     documentos: docCount,
     integracoesAtivas: intCount,
     pendenciasAbertas: pendencias.length,

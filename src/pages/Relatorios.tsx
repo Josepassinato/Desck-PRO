@@ -33,8 +33,10 @@ export function Relatorios() {
   const { data: empresas = [] } = useEmpresas();
   const selectedEmpresaId = empresaId !== "all" ? empresaId : undefined;
 
-  const { data: documentos = [] } = useDocumentos(selectedEmpresaId);
-  const { data: pendencias = [] } = usePendencias(selectedEmpresaId);
+  const { data: documentosResult } = useDocumentos(selectedEmpresaId);
+  const documentos = documentosResult?.data ?? [];
+  const { data: pendenciasResult } = usePendencias(selectedEmpresaId);
+  const pendencias = pendenciasResult?.data ?? [];
   const { data: contagemPendencias = {} } = usePendenciasCount();
 
   const { data: diagnosticos = [] } = useQuery({

@@ -1,8 +1,11 @@
 import { supabase } from "@/lib/supabase";
+import { requireFirmId } from "@/lib/auth-guard";
 import type { Diagnostico } from "@/types/diagnostico";
 
 export const diagnosticoService = {
   async listByEmpresa(empresaId: string): Promise<Diagnostico[]> {
+    await requireFirmId();
+
     const { data, error } = await supabase
       .from("diagnosticos")
       .select("*")
@@ -14,6 +17,8 @@ export const diagnosticoService = {
   },
 
   async getById(id: string): Promise<Diagnostico> {
+    await requireFirmId();
+
     const { data, error } = await supabase
       .from("diagnosticos")
       .select("*")
@@ -25,6 +30,8 @@ export const diagnosticoService = {
   },
 
   async create(empresaId: string, createdBy: string): Promise<Diagnostico> {
+    await requireFirmId();
+
     const { data, error } = await supabase
       .from("diagnosticos")
       .insert({
@@ -55,6 +62,8 @@ export const diagnosticoService = {
       >
     >
   ): Promise<Diagnostico> {
+    await requireFirmId();
+
     const { data, error } = await supabase
       .from("diagnosticos")
       .update(scores)
@@ -67,6 +76,8 @@ export const diagnosticoService = {
   },
 
   async complete(id: string): Promise<Diagnostico> {
+    await requireFirmId();
+
     const { data, error } = await supabase
       .from("diagnosticos")
       .update({
@@ -79,5 +90,25 @@ export const diagnosticoService = {
 
     if (error) throw error;
     return data as Diagnostico;
+  },
+
+  async countByFirm(): Promise<number> {
+    const firmId = await requireFirmId();
+
+    const { data: empresas } = await supabase
+      .from("empresas")
+      .select("id")
+      .eq("accounting_firm_id", firmId);
+
+    const empresaIds = empresas?.map((e) => e.id) ?? [];
+    if (empresaIds.length === 0) return 0;
+
+    const { count, error } = await supabase
+      .from("diagnosticos")
+      .select("id", { count: "exact", head: true })
+      .in("empresa_id", empresaIds);
+
+    if (error) throw error;
+    return count ?? 0;
   },
 };
