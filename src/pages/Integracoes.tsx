@@ -19,13 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -34,7 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { ERP_PROVIDERS } from "@/types/integracao";
 import type { IntegracaoStatus, ERPProviderInfo } from "@/types/integracao";
-import { useEmpresas } from "@/hooks/useEmpresas";
+import { EmpresaSelector } from "@/components/EmpresaSelector";
+import { useEmpresaGlobal } from "@/contexts/EmpresaContext";
 import { useIntegracoes, useCreateIntegracao, useDeleteIntegracao } from "@/hooks/useIntegracoes";
 import { toast } from "sonner";
 
@@ -50,9 +44,8 @@ const statusConfig: Record<
 };
 
 export function Integracoes() {
-  const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>("");
+  const { selectedEmpresaId } = useEmpresaGlobal();
   const [connectDialog, setConnectDialog] = useState<ERPProviderInfo | null>(null);
-  const { data: empresas = [] } = useEmpresas();
   const { data: integracoes = [] } = useIntegracoes(selectedEmpresaId || undefined);
   const createIntegracao = useCreateIntegracao();
   const deleteIntegracao = useDeleteIntegracao();
@@ -69,34 +62,19 @@ export function Integracoes() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Integracoes ERP</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Integrações ERP</h1>
         <p className="text-muted-foreground">
-          Conecte os ERPs das empresas clientes para importar dados
-          automaticamente
+          Conecte os ERPs das empresas clientes para importar dados automaticamente
         </p>
       </div>
 
-      <div className="max-w-sm">
-        <Label>Empresa</Label>
-        <Select value={selectedEmpresaId} onValueChange={setSelectedEmpresaId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione uma empresa" />
-          </SelectTrigger>
-          <SelectContent>
-            {empresas.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.nome_fantasia || e.razao_social}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <EmpresaSelector showLabel className="max-w-sm" />
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" />
-            Conectores Disponiveis
+            Conectores Disponíveis
           </CardTitle>
           <CardDescription>
             {selectedEmpresaId
@@ -146,7 +124,7 @@ export function Integracoes() {
       {selectedEmpresaId && (
         <Card>
           <CardHeader>
-            <CardTitle>Conexoes Ativas</CardTitle>
+            <CardTitle>Conexões Ativas</CardTitle>
             <CardDescription>
               {integracoes.length === 0
                 ? "Nenhuma integracao conectada para esta empresa"

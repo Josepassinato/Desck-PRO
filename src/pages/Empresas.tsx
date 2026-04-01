@@ -158,7 +158,7 @@ export function Empresas() {
                       statusColors[empresa.status] ?? "bg-gray-100"
                     }`}
                   >
-                    {empresa.status}
+                    {empresa.status === "active" ? "Ativa" : empresa.status === "inactive" ? "Inativa" : empresa.status === "prospecting" ? "Prospecção" : empresa.status === "migrating" ? "Migrando" : empresa.status}
                   </span>
                   <span className="text-muted-foreground">
                     {regimeLabels[empresa.regime_atual] ?? empresa.regime_atual}

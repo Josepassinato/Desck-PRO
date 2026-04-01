@@ -7,17 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { EmpresaSelector } from "@/components/EmpresaSelector";
 import { DocumentoUpload } from "@/components/documentos/DocumentoUpload";
 import { DocumentoList } from "@/components/documentos/DocumentoList";
 import { Pagination } from "@/components/ui/pagination";
-import { useEmpresas } from "@/hooks/useEmpresas";
+import { useEmpresaGlobal } from "@/contexts/EmpresaContext";
 import { useDocumentos, useUploadDocumento, useDeleteDocumento } from "@/hooks/useDocumentos";
 import { documentoService } from "@/services/documentoService";
 import type { TipoDocumento } from "@/types/documento";
@@ -27,22 +21,21 @@ const tipoDocLabels: Record<string, string> = {
   nfe: "NF-e",
   nfse: "NFS-e",
   cte: "CT-e",
-  extrato_bancario: "Extrato Bancario",
+  extrato_bancario: "Extrato Bancário",
   folha_pagamento: "Folha de Pagamento",
   balancete: "Balancete",
   darf: "DARF",
   das: "DAS",
   contrato: "Contrato",
-  procuracao: "Procuracao",
+  procuracao: "Procuração",
   certificado_digital: "Certificado Digital",
   outro: "Outro",
 };
 
 export function Documentos() {
-  const [empresaId, setEmpresaId] = useState<string>("");
+  const { selectedEmpresaId: empresaId } = useEmpresaGlobal();
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
-  const { data: empresas } = useEmpresas();
   const { data: docResult } = useDocumentos(empresaId || undefined, page, PAGE_SIZE);
   const documentos = docResult?.data ?? [];
   const totalDocs = docResult?.count ?? 0;
@@ -102,21 +95,10 @@ export function Documentos() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Documentos</h1>
           <p className="text-muted-foreground">
-            Captura, classificacao automatica e gestao de documentos fiscais
+            Captura, classificação automática e gestão de documentos fiscais
           </p>
         </div>
-        <Select value={empresaId} onValueChange={setEmpresaId}>
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Selecione uma empresa" />
-          </SelectTrigger>
-          <SelectContent>
-            {empresas?.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.razao_social}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <EmpresaSelector />
       </div>
 
       <div className="grid gap-3 grid-cols-3 md:grid-cols-4 lg:grid-cols-6">

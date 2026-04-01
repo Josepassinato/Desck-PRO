@@ -6,19 +6,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { EmpresaSelector } from "@/components/EmpresaSelector";
 import { ImportarOFX } from "@/components/bancario/ImportarOFX";
 import {
   MovimentacoesList,
   type Movimentacao,
 } from "@/components/bancario/MovimentacoesList";
-import { useEmpresas } from "@/hooks/useEmpresas";
+import { useEmpresaGlobal } from "@/contexts/EmpresaContext";
 import { categorizarTransacao } from "@/engine/bancario/parser-ofx";
 import type { ExtratoOFX } from "@/engine/bancario/parser-ofx";
 import { supabase } from "@/lib/supabase";
@@ -26,9 +20,8 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function Bancario() {
-  const [empresaId, setEmpresaId] = useState<string>("");
+  const { selectedEmpresaId: empresaId } = useEmpresaGlobal();
   const [isImporting, setIsImporting] = useState(false);
-  const { data: empresas } = useEmpresas();
   const queryClient = useQueryClient();
 
   const { data: movimentacoes = [] } = useQuery({
@@ -75,7 +68,7 @@ export function Bancario() {
 
       if (error) throw error;
 
-      toast.success(`${registros.length} movimentacoes importadas`);
+      toast.success(`${registros.length} movimentações importadas`);
       queryClient.invalidateQueries({ queryKey: ["movimentacoes", empresaId] });
     } catch {
       toast.error("Erro ao importar movimentacoes");
@@ -88,23 +81,12 @@ export function Bancario() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bancario</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Bancário</h1>
           <p className="text-muted-foreground">
-            Importacao de extratos e reconciliacao operacional
+            Importação de extratos e reconciliação operacional
           </p>
         </div>
-        <Select value={empresaId} onValueChange={setEmpresaId}>
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Selecione uma empresa" />
-          </SelectTrigger>
-          <SelectContent>
-            {empresas?.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.razao_social}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <EmpresaSelector />
       </div>
 
       {empresaId ? (

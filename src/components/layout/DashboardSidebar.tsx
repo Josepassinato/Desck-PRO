@@ -18,90 +18,25 @@ import { useAuth } from "@/contexts/auth";
 import { Separator } from "@/components/ui/separator";
 
 const navItems = [
-  {
-    label: "Dashboard",
-    href: "/",
-    icon: LayoutDashboard,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "Empresas",
-    href: "/empresas",
-    icon: Building2,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "Diagnostico",
-    href: "/diagnostico",
-    icon: FileSearch,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "Documentos",
-    href: "/documentos",
-    icon: FileText,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "Integracoes",
-    href: "/integracoes",
-    icon: ArrowRightLeft,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "Bancario",
-    href: "/bancario",
-    icon: Landmark,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "ContaFlux",
-    href: "/contaflux",
-    icon: Send,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "Pendencias",
-    href: "/pendencias",
-    icon: ClipboardList,
-    roles: ["admin", "accountant"],
-  },
-  {
-    label: "Relatorios",
-    href: "/relatorios",
-    icon: BarChart3,
-    roles: ["admin", "accountant"],
-  },
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Empresas", href: "/empresas", icon: Building2 },
+  { label: "Diagnóstico", href: "/diagnostico", icon: FileSearch },
+  { label: "Documentos", href: "/documentos", icon: FileText },
+  { label: "Integrações", href: "/integracoes", icon: ArrowRightLeft },
+  { label: "Bancário", href: "/bancario", icon: Landmark },
+  { label: "ContaFlux", href: "/contaflux", icon: Send },
+  { label: "Pendências", href: "/pendencias", icon: ClipboardList },
+  { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
 ] as const;
 
 const clientItems = [
-  {
-    label: "Meu Portal",
-    href: "/portal",
-    icon: Home,
-    roles: ["client"],
-  },
-  {
-    label: "Pendencias",
-    href: "/pendencias",
-    icon: ClipboardList,
-    roles: ["client"],
-  },
+  { label: "Meu Portal", href: "/portal", icon: Home },
+  { label: "Pendências", href: "/pendencias", icon: ClipboardList },
 ] as const;
 
 const adminItems = [
-  {
-    label: "Usuarios",
-    href: "/admin/usuarios",
-    icon: Users,
-    roles: ["admin"],
-  },
-  {
-    label: "Configuracoes",
-    href: "/admin/configuracoes",
-    icon: Settings,
-    roles: ["admin"],
-  },
+  { label: "Usuários", href: "/admin/usuarios", icon: Users },
+  { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
 ] as const;
 
 type NavItem =
@@ -111,9 +46,10 @@ type NavItem =
 
 interface SidebarProps {
   collapsed?: boolean;
+  onNavigate?: () => void;
 }
 
-export function DashboardSidebar({ collapsed = false }: SidebarProps) {
+export function DashboardSidebar({ collapsed = false, onNavigate }: SidebarProps) {
   const { profile, isAdmin, isClient } = useAuth();
   const location = useLocation();
 
@@ -129,11 +65,14 @@ export function DashboardSidebar({ collapsed = false }: SidebarProps) {
       <NavLink
         key={item.href}
         to={item.href}
+        onClick={onNavigate}
+        title={collapsed ? item.label : undefined}
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
           isActive
             ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+          collapsed && "justify-center px-2"
         )}
       >
         <Icon className="h-4 w-4 shrink-0" />
@@ -160,7 +99,7 @@ export function DashboardSidebar({ collapsed = false }: SidebarProps) {
 
       <Separator />
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {isClient
           ? clientItems.map(renderNavItem)
           : navItems.map(renderNavItem)}
@@ -189,10 +128,10 @@ export function DashboardSidebar({ collapsed = false }: SidebarProps) {
           {!collapsed && (
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium truncate">
-                {profile?.full_name ?? "Usuario"}
+                {profile?.full_name ?? "Usuário"}
               </span>
               <span className="text-xs text-muted-foreground truncate">
-                {profile?.role ?? ""}
+                {profile?.role === "admin" ? "Administrador" : profile?.role === "accountant" ? "Contador" : "Cliente"}
               </span>
             </div>
           )}

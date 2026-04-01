@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Send } from "lucide-react";
 import {
   Card,
@@ -6,22 +5,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { EmpresaSelector } from "@/components/EmpresaSelector";
 import { ContaFluxMonitor } from "@/components/contaflux/ContaFluxMonitor";
-import { useEmpresas } from "@/hooks/useEmpresas";
+import { useEmpresaGlobal } from "@/contexts/EmpresaContext";
 import { contafluxService } from "@/engine/contaflux/service";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export function ContaFlux() {
-  const [empresaId, setEmpresaId] = useState<string>("");
-  const { data: empresas } = useEmpresas();
+  const { selectedEmpresaId: empresaId } = useEmpresaGlobal();
   const queryClient = useQueryClient();
 
   const { data: envios = [], isLoading: loadingEnvios } = useQuery({
@@ -53,21 +45,10 @@ export function ContaFlux() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">ContaFlux</h1>
           <p className="text-muted-foreground">
-            Monitoramento de envios para o motor fiscal-contabil
+            Monitoramento de envios para o motor fiscal-contábil
           </p>
         </div>
-        <Select value={empresaId} onValueChange={setEmpresaId}>
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Selecione uma empresa" />
-          </SelectTrigger>
-          <SelectContent>
-            {empresas?.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.razao_social}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <EmpresaSelector />
       </div>
 
       {empresaId ? (
